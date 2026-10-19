@@ -1,0 +1,4 @@
+# Extra packages for a deployment beyond a lab laptop (docs/deployment.md): pip install -r requirements-production.txt
+-r requirements.txt
+cheroot>=10.0        # production web server, pure Python so it also runs on Windows; serves TLS directly (run.py --production)
+cryptography>=42     # only for `flask --app wifiguard make-cert` (self-signed lab certificates)

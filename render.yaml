@@ -1,0 +1,53 @@
+# render.yaml: Render Blueprint for WiFiGuard (one web service).
+# Put this file in the backend folder, next to run.py, in the repository you deploy from.
+#
+# FREE plan (as written): demo mode. Render wipes the filesystem on every restart, redeploy and
+#   sleep (after 15 minutes without traffic), so each wake-up rebuilds the database from scratch:
+#   demo data is reloaded, the administrator is recreated from the two variables below, and any
+#   changes you made are lost. A sleeping service takes about a minute to wake.
+# PAID plan + disk: keeps your data. Make the three changes marked [PAID].
+#
+# Before you deploy:
+#   1. Push the backend folder to GitHub or GitLab with frontend/dist committed. The backend's
+#      .gitignore has a "frontend/dist/" line; delete that line first, or the dashboard pages
+#      will be missing from the repository.
+#   2. Never commit the instance/ folder, a .venv folder or any password.
+#   3. In Render: New > Blueprint, pick the repository. Render asks you for the administrator
+#      username and password (they are not stored in this file).
+
+services:
+  - type: web
+    name: wifiguard
+    runtime: python
+    plan: free                         # [PAID] 1 of 3: use a paid plan (names are on Render's pricing page)
+    region: frankfurt                  # oregon, ohio, virginia, frankfurt or singapore; fixed once created
+    buildCommand: pip install -r requirements-production.txt
+    startCommand: python run.py --demo --production
+    healthCheckPath: /api/ping         # answers without a sign-in
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.5                  # Render needs the full version; pinned so a brand-new Python cannot break the build
+      - key: WIFIGUARD_HOST
+        value: 0.0.0.0                 # Render can only reach a service that listens on 0.0.0.0
+      - key: WIFIGUARD_PORT
+        value: "10000"                 # Render's default PORT
+      - key: WIFIGUARD_TRUST_PROXY
+        value: "1"                     # WiFiGuard sits behind Render's HTTPS proxy. At start-up it prints a warning that
+                                       # this setting plus 0.0.0.0 lets a direct caller forge the visitor address;
+                                       # public traffic reaches Render services through Render's proxy, so it is expected here.
+      - key: WIFIGUARD_COOKIE_SECURE
+        value: "1"                     # sign-in cookie only over https
+      - key: WIFIGUARD_SECRET_KEY
+        generateValue: true            # random 256-bit key, created once and kept across deploys
+      - key: WIFIGUARD_ADMIN_USER
+        sync: false                    # Render asks you for this when you create the Blueprint
+      - key: WIFIGUARD_ADMIN_PASSWORD
+        sync: false                    # same; use a long passphrase (at least 8 characters)
+      # [PAID] 2 of 3: remove the "#" from the next two lines so the database lives on the disk.
+      # - key: WIFIGUARD_INSTANCE
+      #   value: /var/data/wifiguard
+    # [PAID] 3 of 3: remove the "#" from the next four lines to attach a persistent disk.
+    # disk:
+    #   name: wifiguard-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
